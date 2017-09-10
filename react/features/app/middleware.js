@@ -1,6 +1,8 @@
+import { SET_ROOM } from '../base/conference';
 import {
     CONNECTION_ESTABLISHED,
-    getURLWithoutParams
+    getURLWithoutParams,
+    SET_LOCATION_URL
 } from '../base/connection';
 import { MiddlewareRegistry } from '../base/redux';
 
@@ -8,6 +10,12 @@ MiddlewareRegistry.register(store => next => action => {
     switch (action.type) {
     case CONNECTION_ESTABLISHED:
         return _connectionEstablished(store, next, action);
+
+    case SET_LOCATION_URL:
+        return _setLocationURL(store, next, action);
+
+    case SET_ROOM:
+        return _setRoom(store, next, action);
     }
 
     return next(action);
@@ -15,13 +23,13 @@ MiddlewareRegistry.register(store => next => action => {
 
 /**
  * Notifies the feature app that the action {@link CONNECTION_ESTABLISHED} is
- * being dispatched within a specific Redux {@code store}.
+ * being dispatched within a specific redux {@code store}.
  *
- * @param {Store} store - The Redux store in which the specified {@code action}
+ * @param {Store} store - The redux store in which the specified {@code action}
  * is being dispatched.
- * @param {Dispatch} next - The Redux {@code dispatch} function to dispatch the
+ * @param {Dispatch} next - The redux {@code dispatch} function to dispatch the
  * specified {@code action} to the specified {@code store}.
- * @param {Action} action - The Redux action {@code CONNECTION_ESTABLISHED}
+ * @param {Action} action - The redux action {@code CONNECTION_ESTABLISHED}
  * which is being dispatched in the specified {@code store}.
  * @private
  * @returns {Object} The new state that is the result of the reduction of the
@@ -50,6 +58,64 @@ function _connectionEstablished(store, next, action) {
                 replacement);
         }
     }
+
+    return result;
+}
+
+/**
+ * Navigates to a route in accord with a specific redux state.
+ *
+ * @param {Store} store - The redux store which determines/identifies the route
+ * to navigate to.
+ * @private
+ * @returns {void}
+ */
+function _navigate({ getState }) {
+    const state = getState();
+    const { app, getRouteToRender } = state['features/app'];
+    const routeToRender = getRouteToRender && getRouteToRender(state);
+
+    return app._navigate(routeToRender);
+}
+
+/**
+ * Notifies the feature app that the action {@link SET_LOCATION_URL} is being
+ * dispatched within a specific redux {@code store}.
+ *
+ * @param {Store} store - The redux store in which the specified {@code action}
+ * is being dispatched.
+ * @param {Dispatch} next - The redux {@code dispatch} function to dispatch the
+ * specified {@code action} to the specified {@code store}.
+ * @param {Action} action - The redux action, {@code SET_LOCATION_URL}, which is
+ * being dispatched in the specified {@code store}.
+ * @private
+ * @returns {Object} The new state that is the result of the reduction of the
+ * specified {@code action}.
+ */
+function _setLocationURL({ getState }, next, action) {
+    return (
+        getState()['features/app'].app._navigate(undefined)
+            .then(() => next(action)));
+}
+
+/**
+ * Notifies the feature app that the action {@link SET_ROOM} is being dispatched
+ * within a specific redux {@code store}.
+ *
+ * @param {Store} store - The redux store in which the specified {@code action}
+ * is being dispatched.
+ * @param {Dispatch} next - The redux {@code dispatch} function to dispatch the
+ * specified {@code action} to the specified {@code store}.
+ * @param {Action} action - The redux action, {@code SET_ROOM}, which is being
+ * dispatched in the specified {@code store}.
+ * @private
+ * @returns {Object} The new state that is the result of the reduction of the
+ * specified {@code action}.
+ */
+function _setRoom(store, next, action) {
+    const result = next(action);
+
+    _navigate(store);
 
     return result;
 }

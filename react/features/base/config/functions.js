@@ -1,6 +1,7 @@
 /* @flow */
 
 import JSSHA from 'jssha';
+import _ from 'lodash';
 
 import parseURLParams from './parseURLParams';
 
@@ -172,17 +173,18 @@ export function overrideConfigJSON(
         if (configObj) {
             const configJSON = json[configName];
 
-            for (const key of Object.keys(configJSON)) {
-                const oldValue = configObj[key];
-                const newValue = configJSON[key];
+            if (!_.isEmpty(configJSON)) {
+                logger.info(
+                    `Extending ${configName} with: ${
+                        JSON.stringify(configJSON)}`);
 
-                if (oldValue && typeof oldValue !== typeof newValue) {
-                    logger.log(
-                        `Overriding a ${configName
-                            } property with a property of different type.`);
-                }
-                logger.info(`Overriding ${key} with: ${newValue}`);
-                configObj[key] = newValue;
+                // eslint-disable-next-line arrow-body-style
+                _.mergeWith(configObj, configJSON, (oldValue, newValue) => {
+
+                    // XXX We don't want to merge the arrays, we want to
+                    // overwrite them.
+                    return Array.isArray(oldValue) ? newValue : undefined;
+                });
             }
         }
     }
@@ -227,20 +229,21 @@ export function setConfigFromURLParams() {
     loggingConfig && (json.loggingConfig = {});
 
     for (const param of Object.keys(params)) {
-        const objEnd = param.indexOf('.');
+        let base = json;
+        const names = param.split('.');
+        const last = names.pop();
 
-        if (objEnd !== -1) {
-            const obj = param.substring(0, objEnd);
-
-            if (json.hasOwnProperty(obj)) {
-                const key = param.substring(objEnd + 1);
-
-                // Prevent passing some parameters which can inject scripts.
-                if (key && _KEYS_TO_IGNORE.indexOf(key) === -1) {
-                    json[obj][key] = params[param];
-                }
-            }
+        // Prevent passing some parameters which can inject scripts.
+        if (_KEYS_TO_IGNORE.indexOf(last) !== -1) {
+            // eslint-disable-next-line no-continue
+            continue;
         }
+
+        for (const name of names) {
+            base = base[name] = base[name] || {};
+        }
+
+        base[last] = params[param];
     }
 
     overrideConfigJSON(config, interfaceConfig, loggingConfig, json);

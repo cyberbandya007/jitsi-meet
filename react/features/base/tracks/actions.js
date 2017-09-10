@@ -1,18 +1,53 @@
-import JitsiMeetJS, {
-    JitsiTrackErrors,
-    JitsiTrackEvents
-} from '../lib-jitsi-meet';
+import { JitsiTrackErrors, JitsiTrackEvents } from '../lib-jitsi-meet';
 import {
     CAMERA_FACING_MODE,
-    MEDIA_TYPE
+    MEDIA_TYPE,
+    setAudioMuted,
+    setVideoMuted
 } from '../media';
 import { getLocalParticipant } from '../participants';
 
 import {
     TRACK_ADDED,
+    TRACK_PERMISSION_ERROR,
     TRACK_REMOVED,
     TRACK_UPDATED
 } from './actionTypes';
+import { createLocalTracksF } from './functions';
+
+/**
+ * Requests the creating of the desired media type tracks. Desire is expressed
+ * by base/media unless the function caller specifies desired media types
+ * explicitly and thus override base/media. Dispatches a
+ * {@code createLocalTracksA} action for the desired media types for which there
+ * are no existing tracks yet.
+ *
+ * @returns {Function}
+ */
+export function createDesiredLocalTracks(...desiredTypes) {
+    return (dispatch, getState) => {
+        const state = getState();
+
+        if (desiredTypes.length === 0) {
+            const { audio, video } = state['features/base/media'];
+
+            audio.muted || desiredTypes.push(MEDIA_TYPE.AUDIO);
+            Boolean(video.muted) || desiredTypes.push(MEDIA_TYPE.VIDEO);
+        }
+
+        const availableTypes
+            = state['features/base/tracks']
+                .filter(t => t.local)
+                .map(t => t.mediaType);
+
+        // We need to create the desired tracks which are not already available.
+        const createTypes
+            = desiredTypes.filter(type => availableTypes.indexOf(type) === -1);
+
+        createTypes.length
+            && dispatch(createLocalTracksA({ devices: createTypes }));
+    };
+}
 
 /**
  * Request to start capturing local audio and/or video. By default, the user
@@ -21,19 +56,41 @@ import {
  * @param {Object} [options] - For info @see JitsiMeetJS.createLocalTracks.
  * @returns {Function}
  */
-export function createLocalTracks(options = {}) {
-    return dispatch =>
-        JitsiMeetJS.createLocalTracks({
-            cameraDeviceId: options.cameraDeviceId,
-            devices: options.devices || [ MEDIA_TYPE.AUDIO, MEDIA_TYPE.VIDEO ],
-            facingMode: options.facingMode || CAMERA_FACING_MODE.USER,
-            micDeviceId: options.micDeviceId
-        })
-        .then(localTracks => dispatch(_updateLocalTracks(localTracks)))
-        .catch(err => {
-            console.error(
-                `JitsiMeetJS.createLocalTracks.catch rejection reason: ${err}`);
-        });
+export function createLocalTracksA(options = {}) {
+    return (dispatch, getState) => {
+        const devices
+            = options.devices || [ MEDIA_TYPE.AUDIO, MEDIA_TYPE.VIDEO ];
+        const store = {
+            dispatch,
+            getState
+        };
+
+        // The following executes on React Native only at the time of this
+        // writing. The effort to port Web's createInitialLocalTracksAndConnect
+        // is significant and that's where the function createLocalTracksF got
+        // born. I started with the idea a porting so that we could inherit the
+        // ability to getUserMedia for audio only or video only if getUserMedia
+        // for audio and video fails. Eventually though, I realized that on
+        // mobile we do not have combined permission prompts implemented anyway
+        // (either because there are no such prompts or it does not make sense
+        // to implement them) and the right thing to do is to ask for each
+        // device separately.
+        for (const device of devices) {
+            createLocalTracksF(
+                {
+                    cameraDeviceId: options.cameraDeviceId,
+                    devices: [ device ],
+                    facingMode: options.facingMode || CAMERA_FACING_MODE.USER,
+                    micDeviceId: options.micDeviceId
+                },
+                /* firePermissionPromptIsShownEvent */ false,
+                store)
+            .then(
+                localTracks => dispatch(_updateLocalTracks(localTracks)),
+                reason =>
+                    dispatch(_onCreateLocalTracksRejected(reason, device)));
+        }
+    };
 }
 
 /**
@@ -49,6 +106,65 @@ export function destroyLocalTracks() {
                 getState()['features/base/tracks']
                     .filter(t => t.local)
                     .map(t => t.jitsiTrack)));
+}
+
+/**
+ * Replaces one track with another for one renegotiation instead of invoking
+ * two renegotiations with a separate removeTrack and addTrack. Disposes the
+ * removed track as well.
+ *
+ * @param {JitsiLocalTrack|null} oldTrack - The track to dispose.
+ * @param {JitsiLocalTrack|null} newTrack - The track to use instead.
+ * @param {JitsiConference} [conference] - The conference from which to remove
+ * and add the tracks. If one is not provided, the conference in the redux store
+ * will be used.
+ * @returns {Function}
+ */
+export function replaceLocalTrack(oldTrack, newTrack, conference) {
+    return (dispatch, getState) => {
+        conference
+
+            // eslint-disable-next-line no-param-reassign
+            || (conference = getState()['features/base/conference'].conference);
+
+        return conference.replaceTrack(oldTrack, newTrack)
+            .then(() => {
+                // We call dispose after doing the replace because dispose will
+                // try and do a new o/a after the track removes itself. Doing it
+                // after means the JitsiLocalTrack.conference is already
+                // cleared, so it won't try and do the o/a.
+                const disposePromise
+                    = oldTrack
+                        ? dispatch(_disposeAndRemoveTracks([ oldTrack ]))
+                        : Promise.resolve();
+
+                return disposePromise
+                    .then(() => {
+                        if (newTrack) {
+                            // The mute state of the new track should be
+                            // reflected in the app's mute state. For example,
+                            // if the app is currently muted and changing to a
+                            // new track that is not muted, the app's mute
+                            // state should be falsey. As such, emit a mute
+                            // event here to set up the app to reflect the
+                            // track's mute state. If this is not done, the
+                            // current mute state of the app will be reflected
+                            // on the track, not vice-versa.
+                            const setMuted
+                                = newTrack.isVideoTrack()
+                                    ? setVideoMuted
+                                    : setAudioMuted;
+
+                            return dispatch(setMuted(newTrack.isMuted()));
+                        }
+                    })
+                    .then(() => {
+                        if (newTrack) {
+                            return dispatch(_addTracks([ newTrack ]));
+                        }
+                    });
+            });
+    };
 }
 
 /**
@@ -102,7 +218,10 @@ export function trackAdded(track) {
  * changed.
  *
  * @param {(JitsiLocalTrack|JitsiRemoteTrack)} track - JitsiTrack instance.
- * @returns {{ type: TRACK_UPDATED, track: Track }}
+ * @returns {{
+ *     type: TRACK_UPDATED,
+ *     track: Track
+ * }}
  */
 export function trackMutedChanged(track) {
     return {
@@ -119,9 +238,15 @@ export function trackMutedChanged(track) {
  * conference.
  *
  * @param {(JitsiLocalTrack|JitsiRemoteTrack)} track - JitsiTrack instance.
- * @returns {{ type: TRACK_REMOVED, track: Track }}
+ * @returns {{
+ *     type: TRACK_REMOVED,
+ *     track: Track
+ * }}
  */
 export function trackRemoved(track) {
+    track.removeAllListeners(JitsiTrackEvents.TRACK_MUTE_CHANGED);
+    track.removeAllListeners(JitsiTrackEvents.TRACK_VIDEOTYPE_CHANGED);
+
     return {
         type: TRACK_REMOVED,
         track: {
@@ -134,7 +259,10 @@ export function trackRemoved(track) {
  * Signal that track's video started to play.
  *
  * @param {(JitsiLocalTrack|JitsiRemoteTrack)} track - JitsiTrack instance.
- * @returns {{ type: TRACK_UPDATED, track: Track }}
+ * @returns {{
+ *     type: TRACK_UPDATED,
+ *     track: Track
+ * }}
  */
 export function trackVideoStarted(track) {
     return {
@@ -151,7 +279,10 @@ export function trackVideoStarted(track) {
  *
  * @param {(JitsiLocalTrack|JitsiRemoteTrack)} track - JitsiTrack instance.
  * @param {VIDEO_TYPE|undefined} videoType - Video type.
- * @returns {{ type: TRACK_UPDATED, track: Track }}
+ * @returns {{
+ *     type: TRACK_UPDATED,
+ *     track: Track
+ * }}
  */
 export function trackVideoTypeChanged(track, videoType) {
     return {
@@ -171,8 +302,7 @@ export function trackVideoTypeChanged(track, videoType) {
  * @returns {Function}
  */
 function _addTracks(tracks) {
-    return dispatch =>
-        Promise.all(tracks.map(t => dispatch(trackAdded(t))));
+    return dispatch => Promise.all(tracks.map(t => dispatch(trackAdded(t))));
 }
 
 /**
@@ -228,8 +358,8 @@ function _getLocalTrack(tracks, mediaType) {
  * tracks.
  * @private
  * @returns {{
- *      tracksToAdd: JitsiLocalTrack[],
- *      tracksToRemove: JitsiLocalTrack[]
+ *     tracksToAdd: JitsiLocalTrack[],
+ *     tracksToRemove: JitsiLocalTrack[]
  * }}
  */
 function _getLocalTracksToChange(currentTracks, newTracks) {
@@ -250,6 +380,52 @@ function _getLocalTracksToChange(currentTracks, newTracks) {
     return {
         tracksToAdd,
         tracksToRemove
+    };
+}
+
+/**
+ * Implements the <tt>Promise</tt> rejection handler of
+ * <tt>createLocalTracksA</tt> and <tt>createLocalTracksF</tt>.
+ *
+ * @param {Object} reason - The <tt>Promise</tt> rejection reason.
+ * @param {string} device - The device/<tt>MEDIA_TYPE</tt> associated with the
+ * rejection.
+ * @private
+ * @returns {Function}
+ */
+function _onCreateLocalTracksRejected({ gum }, device) {
+    return dispatch => {
+        // If permissions are not allowed, alert the user.
+        if (gum) {
+            const { error } = gum;
+
+            if (error) {
+                // FIXME For whatever reason (which is probably an
+                // implementation fault), react-native-webrtc will give the
+                // error in one of the following formats depending on whether it
+                // is attached to a remote debugger or not. (The remote debugger
+                // scenario suggests that react-native-webrtc is at fault
+                // because the remote debugger is Google Chrome and then its
+                // JavaScript engine will define DOMException. I suspect I wrote
+                // react-native-webrtc to return the error in the alternative
+                // format if DOMException is not defined.)
+                let trackPermissionError;
+
+                switch (error.name) {
+                case 'DOMException':
+                    trackPermissionError = error.message === 'NotAllowedError';
+                    break;
+
+                case 'NotAllowedError':
+                    trackPermissionError = error instanceof DOMException;
+                    break;
+                }
+                trackPermissionError && dispatch({
+                    type: TRACK_PERMISSION_ERROR,
+                    trackType: device
+                });
+            }
+        }
     };
 }
 
@@ -280,8 +456,7 @@ function _shouldMirror(track) {
             // of the value on the right side of the equality check is defined
             // by jitsi-meet. The type definitions are surely compatible today
             // but that may not be the case tomorrow.
-            && track.getCameraFacingMode() === CAMERA_FACING_MODE.USER
-    );
+            && track.getCameraFacingMode() === CAMERA_FACING_MODE.USER);
 }
 
 /**

@@ -3,6 +3,7 @@ import React, { Component } from 'react';
 import { AppRegistry, Linking } from 'react-native';
 
 import { App } from './features/app';
+import { equals } from './features/base/redux';
 
 /**
  * React Native doesn't support specifying props to the main/root component (in
@@ -21,7 +22,10 @@ class Root extends Component {
         /**
          * The URL, if any, with which the app was launched.
          */
-        url: React.PropTypes.string,
+        url: React.PropTypes.oneOfType([
+            React.PropTypes.object,
+            React.PropTypes.string
+        ]),
 
         /**
          * Whether the Welcome page is enabled. If {@code true}, the Welcome
@@ -44,30 +48,49 @@ class Root extends Component {
          * The initial state of this Component.
          *
          * @type {{
-         *     url: string
+         *     url: object|string
          * }}
          */
         this.state = {
             /**
              * The URL, if any, with which the app was launched.
              *
-             * @type {string}
+             * @type {object|string}
              */
             url: this.props.url
         };
 
-        // Handle the URL, if any, with which the app was launched.
-        Linking.getInitialURL()
-            .then(url => this.setState({ url }))
-            .catch(err => {
-                console.error('Failed to get initial URL', err);
+        // Handle the URL, if any, with which the app was launched. But props
+        // have precedence.
+        if (typeof this.props.url === 'undefined') {
+            Linking.getInitialURL()
+                .then(url => {
+                    if (typeof this.state.url === 'undefined') {
+                        this.setState({ url });
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to get initial URL', err);
 
-                // XXX Start with an empty URL if getting the initial URL fails;
-                // otherwise, nothing will be rendered.
-                if (this.state.url !== null) {
-                    this.setState({ url: null });
-                }
-            });
+                    if (typeof this.state.url === 'undefined') {
+                        // Start with an empty URL if getting the initial URL
+                        // fails; otherwise, nothing will be rendered.
+                        this.setState({ url: null });
+                    }
+                });
+        }
+    }
+
+    /**
+     * Implements React's {@link Component#componentWillReceiveProps()}.
+     *
+     * New props can be set from the native side by setting the appProperties
+     * property (on iOS) or calling setAppProperties (on Android).
+     *
+     * @inheritdoc
+     */
+    componentWillReceiveProps({ url }) {
+        equals(this.props.url, url) || this.setState({ url: url || null });
     }
 
     /**

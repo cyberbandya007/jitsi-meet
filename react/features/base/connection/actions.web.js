@@ -19,7 +19,7 @@ export {
     connectionEstablished,
     connectionFailed,
     setLocationURL
-} from './actions.native.js';
+} from './actions.native';
 
 /**
  * Opens new connection.
@@ -67,8 +67,8 @@ export function connect() {
             APP.UI.initConference();
 
             APP.UI.addListener(
-                    UIEvents.LANG_CHANGED,
-                    language => APP.translation.setLanguage(language));
+                UIEvents.LANG_CHANGED,
+                language => APP.translation.setLanguage(language));
 
             APP.keyboardshortcut.init();
 

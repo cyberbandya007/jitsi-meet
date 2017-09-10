@@ -4,12 +4,13 @@ import { connect as reactReduxConnect } from 'react-redux';
 import { connect, disconnect } from '../../base/connection';
 import { DialogContainer } from '../../base/dialog';
 import { Container } from '../../base/react';
+import { createDesiredLocalTracks } from '../../base/tracks';
 import { Filmstrip } from '../../filmstrip';
 import { LargeVideo } from '../../large-video';
 import { OverlayContainer } from '../../overlay';
 import { setToolboxVisible, Toolbox } from '../../toolbox';
 
-import { styles } from './styles';
+import styles from './styles';
 
 /**
  * The timeout in milliseconds after which the Toolbox will be hidden.
@@ -146,18 +147,20 @@ class Conference extends Component {
                 <Filmstrip />
 
                 {/*
+                  * The overlays need to be bellow the Toolbox so that the user
+                  * may tap the ToolbarButtons.
+                  */}
+                <OverlayContainer />
+
+                {/*
                   * The Toolbox is in a stacking layer above the Filmstrip.
                   */}
                 <Toolbox />
 
                 {/*
-                  * The dialogs and overlays are in the topmost stacking layers.
-                  * Generally, the dialogs and overlays should not be visible at
-                  * the same time so it is not really defined which one is above
-                  * the other.
+                  * The dialogs are in the topmost stacking layers.
                   */}
                 <DialogContainer />
-                <OverlayContainer />
             </Container>
         );
     }
@@ -220,23 +223,25 @@ class Conference extends Component {
 function _mapDispatchToProps(dispatch) {
     return {
         /**
-         * Dispatched an action connecting to the conference.
+         * Dispatches actions to create the desired local tracks and for
+         * connecting to the conference.
          *
-         * @returns {Object} Dispatched action.
+         * @returns {void}
          * @private
          */
         _onConnect() {
-            return dispatch(connect());
+            dispatch(createDesiredLocalTracks());
+            dispatch(connect());
         },
 
         /**
          * Dispatches an action disconnecting from the conference.
          *
-         * @returns {Object} Dispatched action.
+         * @returns {void}
          * @private
          */
         _onDisconnect() {
-            return dispatch(disconnect());
+            dispatch(disconnect());
         },
 
         /**
@@ -244,11 +249,11 @@ function _mapDispatchToProps(dispatch) {
          *
          * @param {boolean} visible - True to show the Toolbox or false to hide
          * it.
-         * @returns {Object} Dispatched action.
+         * @returns {void}
          * @private
          */
         _setToolboxVisible(visible: boolean) {
-            return dispatch(setToolboxVisible(visible));
+            dispatch(setToolboxVisible(visible));
         }
     };
 }
@@ -275,4 +280,4 @@ function _mapStateToProps(state) {
 }
 
 export default reactReduxConnect(_mapStateToProps, _mapDispatchToProps)(
-        Conference);
+    Conference);

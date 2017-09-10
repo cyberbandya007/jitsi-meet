@@ -1,11 +1,10 @@
 import { ReducerRegistry } from '../base/redux';
 import {
-    SET_FILMSTRIP_REMOTE_VIDEOS_VISIBLITY,
+    SET_FILMSTRIP_HOVERED,
     SET_FILMSTRIP_VISIBILITY
 } from './actionTypes';
 
 const DEFAULT_STATE = {
-    remoteVideosVisible: true,
     visible: true
 };
 
@@ -13,11 +12,12 @@ ReducerRegistry.register(
     'features/filmstrip',
     (state = DEFAULT_STATE, action) => {
         switch (action.type) {
-        case SET_FILMSTRIP_REMOTE_VIDEOS_VISIBLITY:
+        case SET_FILMSTRIP_HOVERED:
             return {
                 ...state,
-                remoteVideosVisible: action.remoteVideosVisible
+                hovered: action.hovered
             };
+
         case SET_FILMSTRIP_VISIBILITY:
             return {
                 ...state,

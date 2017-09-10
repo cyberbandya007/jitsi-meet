@@ -7,9 +7,12 @@ import {
     CONFERENCE_JOINED,
     CONFERENCE_LEFT,
     CONFERENCE_WILL_JOIN,
-    CONFERENCE_WILL_LEAVE
+    CONFERENCE_WILL_LEAVE,
+    JITSI_CONFERENCE_URL_KEY
 } from '../../base/conference';
+import { LOAD_CONFIG_ERROR } from '../../base/config';
 import { MiddlewareRegistry } from '../../base/redux';
+import { toURLString } from '../../base/util';
 
 /**
  * Middleware that captures Redux actions and uses the ExternalAPI module to
@@ -27,56 +30,55 @@ MiddlewareRegistry.register(store => next => action => {
     case CONFERENCE_LEFT:
     case CONFERENCE_WILL_JOIN:
     case CONFERENCE_WILL_LEAVE: {
-        const { conference, room, type, ...data } = action;
+        const { conference, type, ...data } = action;
 
-        // For the above (redux) actions, conference and/or room identify a
+        // For the above (redux) actions, conference identifies a
         // JitsiConference instance. The external API cannot transport such an
         // object so we have to transport an "equivalent".
-        if (conference || room) {
-            // We have chosen to identify the object in question by the
-            // (supposedly) associated location URL. (FIXME Actually, the redux
-            // state locationURL is not really asssociated with the
-            // JitsiConference instance. The value of localtionURL is utilized
-            // in order to initialize the JitsiConference instance but the value
-            // of locationURL at the time of CONFERENCE_WILL_LEAVE and
-            // CONFERENCE_LEFT will not be the value with which the
-            // JitsiConference instance being left.)
-            const state = store.getState();
-            const { locationURL } = state['features/base/connection'];
-
-            if (!locationURL) {
-                // The (redux) action cannot be fully converted to an (external
-                // API) event.
-                break;
-            }
-
-            data.url = locationURL.href;
+        if (conference) {
+            data.url = toURLString(conference[JITSI_CONFERENCE_URL_KEY]);
         }
 
-        // The (externa API) event's name is the string representation of the
-        // (redux) action's type.
-        let name = type.toString();
+        _sendEvent(store, _getSymbolDescription(type), data);
+        break;
+    }
 
-        // XXX We are using Symbol for (redux) action types at the time of this
-        // writing so the Symbol's description should be used.
-        if (name.startsWith('Symbol(') && name.endsWith(')')) {
-            name = name.slice(7, -1);
-        }
+    case LOAD_CONFIG_ERROR: {
+        const { error, locationURL, type } = action;
 
-        // The polyfill es6-symbol that we use does not appear to comply with
-        // the Symbol standard and, merely, adds @@ at the beginning of the
-        // description.
-        if (name.startsWith('@@')) {
-            name = name.slice(2);
-        }
-
-        _sendEvent(store, name, data);
+        _sendEvent(store, _getSymbolDescription(type), {
+            error: String(error),
+            url: toURLString(locationURL)
+        });
         break;
     }
     }
 
     return result;
 });
+
+/**
+ * Gets the description of a specific <tt>Symbol</tt>.
+ *
+ * @param {Symbol} symbol - The <tt>Symbol</tt> to retrieve the description of.
+ * @private
+ * @returns {string} The description of <tt>symbol</tt>.
+ */
+function _getSymbolDescription(symbol: Symbol) {
+    let description = symbol.toString();
+
+    if (description.startsWith('Symbol(') && description.endsWith(')')) {
+        description = description.slice(7, -1);
+    }
+
+    // The polyfill es6-symbol that we use does not appear to comply with the
+    // Symbol standard and, merely, adds @@ at the beginning of the description.
+    if (description.startsWith('@@')) {
+        description = description.slice(2);
+    }
+
+    return description;
+}
 
 /**
  * Sends a specific event to the native counterpart of the External API. Native

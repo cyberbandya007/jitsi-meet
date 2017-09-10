@@ -8,6 +8,8 @@ import { Avatar } from '../../base/participants';
 import { Container, Text } from '../../base/react';
 import UIEvents from '../../../../service/UI/UIEvents';
 
+import styles from './styles';
+
 declare var $: Object;
 declare var APP: Object;
 declare var interfaceConfig: Object;
@@ -156,21 +158,26 @@ class CallOverlay extends Component {
      */
     render() {
         const { className, ringing } = this.state;
-        const { avatarUrl, name } = this.props._callee;
+        const { avatarUrl, avatar, name } = this.props._callee;
 
         return (
             <Container
-                className = { `ringing ${className || ''}` }
+                { ...this._style('ringing', className) }
                 id = 'ringOverlay'>
-                <Container className = 'ringing__content'>
-                    { ringing ? <Text>Calling...</Text> : null }
+                <Container
+                    { ...this._style('ringing__content') }>
+                    <Text { ...this._style('ringing__text') }>
+                        { ringing ? 'Calling...' : '' }
+                    </Text>
                     <Avatar
-                        className = 'ringing__avatar'
-                        uri = { avatarUrl } />
-                    <Container className = 'ringing__caller-info'>
-                        <Text>
+                        { ...this._style('ringing__avatar') }
+                        uri = { avatarUrl || avatar } />
+                    <Container
+                        { ...this._style('ringing__caller-info') }>
+                        <Text
+                            { ...this._style('ringing__text') }>
                             { name }
-                            { ringing ? null : ' isn\'t available' }
+                            { ringing ? '' : ' isn\'t available' }
                         </Text>
                     </Container>
                 </Container>
@@ -262,6 +269,52 @@ class CallOverlay extends Component {
      */
     _setAudio(audio) {
         this._audio = audio;
+    }
+
+    /**
+     * Attempts to convert specified CSS class names into React
+     * {@link Component} props {@code style} or {@code className}.
+     *
+     * @param {Array<string>} classNames - The CSS class names to convert
+     * into React {@code Component} props {@code style} or {@code className}.
+     * @returns {{
+     *     className: string,
+     *     style: Object
+     * }}
+     */
+    _style(...classNames: Array<?string>) {
+        let className = '';
+        let style;
+
+        for (const aClassName of classNames) {
+            if (aClassName) {
+                // Attemp to convert aClassName into style.
+                if (styles && aClassName in styles) {
+                    // React Native will accept an Array as the value of the
+                    // style prop. However, I do not know about React.
+                    style = {
+                        ...style,
+                        ...styles[aClassName]
+                    };
+                } else {
+                    // Otherwise, leave it as className.
+                    className += aClassName;
+                }
+            }
+        }
+
+        // Choose which of the className and/or style props has a value and,
+        // consequently, must be returned.
+        const props = {};
+
+        if (className) {
+            props.className = className;
+        }
+        if (style) {
+            props.style = style;
+        }
+
+        return props;
     }
 }
 

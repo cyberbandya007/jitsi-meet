@@ -41,16 +41,11 @@ body, input, textarea, keygen, select, button {
 button, input, select, textarea {
     margin: 0;
     vertical-align: baseline;
-    color: $inputColor;
     font-size: 1em;
 }
 
 button, select, input[type="button"],
 input[type="reset"], input[type="submit"] {
-    height: 32px;
-    line-height: 32px;
-    padding-left: 4px;
-    padding-right: 4px;
     cursor: pointer;
 }
 
@@ -85,8 +80,8 @@ form {
     display: block;
     position: absolute;
     top: 15;
-    width: 186px;
-    height: 74px;
+    width: $watermarkWidth;
+    height: $watermarkHeight;
     background-size: contain;
     background-repeat: no-repeat;
     z-index: $zindex2;
@@ -122,21 +117,6 @@ form {
 .lastN, .disconnected {
     color: #a3a3a3;
     font-size: 12px;
-}
-
-/**
-* Tooltips
-**/
-.tipsy {
-    z-index: $tooltipsZ;
-    &-inner {
-        background-color: $tooltipBg;
-        max-width: 350px;
-    }
-
-    &-arrow {
-        border-color: $tooltipBg;
-    }
 }
 
 /**

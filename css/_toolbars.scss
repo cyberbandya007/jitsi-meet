@@ -19,74 +19,6 @@
     vertical-align: middle;
 }
 
- /**
-  * Toolbar button styles.
-  */
-.button {
-    color: #FFFFFF;
-    cursor: pointer;
-    z-index: $zindex1;
-    display: inline-block;
-    font-size: $toolbarFontSize !important;
-    height: 50px;
-    line-height: 50px !important;
-    position: relative;
-    text-align: center;
-    top:0px;
-    vertical-align: middle;
-    width: 50px;
-
-    &_hangup {
-        color: $hangupColor;
-        font-size: $hangupFontSize !important;
-    }
-
-    &[disabled] {
-        opacity: 0.5;
-    }
-
-    &:hover, &:active {
-        cursor: pointer;
-        text-decoration: none;
-    }
-
-    &:not(.toggled) {
-        &:hover, &:active {
-            // sum opacity with background layer should give us 0.8
-            background: $toolbarSelectBackground;
-        }
-    }
-
-    &.toggled {
-        background: $toolbarToggleBackground;
-
-        &.icon-camera {
-            @extend .icon-camera-disabled;
-        }
-
-        &.icon-full-screen {
-            @extend .icon-exit-full-screen;
-        }
-
-        &.icon-microphone {
-            @extend .icon-mic-disabled;
-        }
-
-        &.icon-visibility {
-            @extend .icon-visibility-off;
-        }
-    }
-
-    &.unclickable {
-        cursor: default;
-
-        &:hover, &:active, &.selected {
-            background: none;
-            cursor: default;
-        }
-    }
-}
-
 .toolbar-container {
     display: block;
     left:0;
@@ -104,28 +36,104 @@
  * Common toolbar styles.
  */
 .toolbar {
-    background-color: $toolbarBackground;
+    color: $modalTextColor;
     height: 100%;
     pointer-events: auto;
     position: relative;
     z-index: $toolbarZ;
 
     /**
-     * Splitter button in the toolbar.
+     * Ensure nested elements that don't have a button class, maybe because they
+     * are wrapped in a React Element, still display in a line.
      */
-    &__splitter {
-        background: $splitterColor;
+    > div {
         display: inline-block;
-        height: 50%;
-        margin: 0 $splitterToolbarButtonMargin;
+    }
+
+    /**
+     * Always on top overrides.
+     */
+    &.always-on-top {
+        /**
+         * Toolbar button styles for always on top.
+         */
+        > .button {
+            font-size: $alwaysOnTopToolbarFontSize;
+            height: $alwaysOnTopToolbarSize;
+            line-height: $alwaysOnTopToolbarSize;
+            width: $alwaysOnTopToolbarSize;
+        }
+    }
+
+    /**
+     * Toolbar button styles.
+     */
+    .button {
+        color: $toolbarButtonColor;
+        cursor: pointer;
+        z-index: $zindex1;
+        display: inline-block;
+        font-size: $toolbarFontSize;
+        height: $defaultToolbarSize;
+        line-height: $defaultToolbarSize;
+        position: relative;
+        text-align: center;
+        top:0px;
         vertical-align: middle;
-        width: 1px;
+        width: $defaultToolbarSize;
+
+        &_hangup {
+            color: $hangupColor;
+            font-size: $hangupFontSize;
+        }
+
+        &[disabled] {
+            opacity: 0.5;
+        }
+
+        &:hover, &:active {
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        &:not(.toggled) {
+            &:hover, &:active {
+                // sum opacity with background layer should give us 0.8
+                background: $toolbarSelectBackground;
+            }
+        }
+
+        &.toggled {
+            background: $toolbarToggleBackground;
+
+            &.icon-camera {
+                @extend .icon-camera-disabled;
+            }
+
+            &.icon-full-screen {
+                @extend .icon-exit-full-screen;
+            }
+
+            &.icon-microphone {
+                @extend .icon-mic-disabled;
+            }
+        }
+
+        &.unclickable {
+            cursor: default;
+
+            &:hover, &:active, &.selected {
+                background: none;
+                cursor: default;
+            }
+        }
     }
 
     /**
      * Primary toolbar styles.
      */
     &_primary {
+        background-color: $toolbarBackground;
         position: absolute;
         left: 50%;
         top: 30px;
@@ -135,13 +143,18 @@
         border-radius: 3px;
         opacity: 0;
 
+        &.always-on-top {
+            height: $alwaysOnTopToolbarSize;
+            top: 10px;
+        }
+
         @include transform(translateX(-50%));
 
-        .button:first-child {
+        > div:first-child .button {
             border-bottom-left-radius: 3px;
             border-top-left-radius: 3px;
         }
-        .button:last-child {
+        > div:last-child .button {
             border-bottom-right-radius: 3px;
             border-top-right-radius: 3px;
         }
@@ -155,6 +168,7 @@
      * Secondary toolbar styles.
      */
     &_secondary {
+        background-color: $secondaryToolbarBg;
         position: absolute;
         align-items: center;
         box-sizing: border-box;
@@ -168,14 +182,20 @@
         height: 100%;
         justify-content: flex-start;
         left: 0;
-        padding-top: 10px;
+        padding-top: 24px;
         top: 0;
         transform: translateX(-100%);
         width: $defaultToolbarSize;
         -webkit-transform: translateX(-100%);
 
+        .button {
+            font-size: $secToolbarFontSize;
+            height: $secToolbarLineHeight;
+            line-height: $secToolbarLineHeight;
+        }
+
         .button.toggled:not(.icon-raised-hand):not(.button-active) {
-            background: $toolbarSelectBackground;
+            background: $secondaryToolbarBg;
             cursor: pointer;
             text-decoration: none;
 
@@ -194,12 +214,10 @@
      * Styles the toolbar in filmstrip-only mode.
      */
     &_filmstrip-only {
+        background-color: $toolbarBackground;
         border-radius: 3px;
-        bottom: 0;
         display: inline-block;
         height: auto;
-        position: absolute;
-        right: 0;
         width: $defaultFilmStripOnlyToolbarSize;
 
         .button {
@@ -228,6 +246,14 @@
     }
 }
 
+.filmstrip-only {
+    .toolbox,
+    .toolbox-toolbars {
+        align-items: center;
+        display: flex;
+    }
+}
+
 .subject {
     background: linear-gradient(to bottom, rgba(255,255,255,.85) , rgba(255,255,255,.35));
     border-bottom-left-radius: 12px;
@@ -252,11 +278,15 @@
     }
 }
 
+#toolbar_button_profile {
+    height: $toolbarAvatarSize + 2*$toolbarAvatarPadding;
+}
+
 a.button>#avatar {
     border-radius: 50%;
-    padding-bottom: 10px;
-    padding-top: 10px;
-    width: 30px;
+    padding-bottom: $toolbarAvatarPadding;
+    padding-top: $toolbarAvatarPadding;
+    width: $toolbarAvatarSize;
 }
 
 #feedbackButton {

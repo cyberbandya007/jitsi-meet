@@ -20,6 +20,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -27,10 +28,14 @@ import android.widget.FrameLayout;
 
 import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.ReactRootView;
+import com.facebook.react.bridge.NativeModule;
+import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.common.LifecycleState;
 
 import java.net.URL;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
@@ -51,11 +56,23 @@ public class JitsiMeetView extends FrameLayout {
     private static final Set<JitsiMeetView> views
         = Collections.newSetFromMap(new WeakHashMap<JitsiMeetView, Boolean>());
 
+    private static List<NativeModule> createNativeModules(
+            ReactApplicationContext reactContext) {
+        return Arrays.<NativeModule>asList(
+            new AndroidSettingsModule(reactContext),
+            new AudioModeModule(reactContext),
+            new ExternalAPIModule(reactContext),
+            new ProximityModule(reactContext)
+        );
+    }
+
     public static JitsiMeetView findViewByExternalAPIScope(
             String externalAPIScope) {
-        for (JitsiMeetView view : views) {
-            if (view.externalAPIScope.equals(externalAPIScope)) {
-                return view;
+        synchronized (views) {
+            for (JitsiMeetView view : views) {
+                if (view.externalAPIScope.equals(externalAPIScope)) {
+                    return view;
+                }
             }
         }
 
@@ -81,14 +98,42 @@ public class JitsiMeetView extends FrameLayout {
                 .addPackage(new com.oblador.vectoricons.VectorIconsPackage())
                 .addPackage(new com.ocetnik.timer.BackgroundTimerPackage())
                 .addPackage(new com.oney.WebRTCModule.WebRTCModulePackage())
+                .addPackage(new com.RNFetchBlob.RNFetchBlobPackage())
                 .addPackage(new com.rnimmersive.RNImmersivePackage())
-                .addPackage(new org.jitsi.meet.sdk.audiomode.AudioModePackage())
-                .addPackage(
-                        new org.jitsi.meet.sdk.externalapi.ExternalAPIPackage())
-                .addPackage(new org.jitsi.meet.sdk.proximity.ProximityPackage())
+                .addPackage(new ReactPackageAdapter() {
+                    @Override
+                    public List<NativeModule> createNativeModules(
+                            ReactApplicationContext reactContext) {
+                        return JitsiMeetView.createNativeModules(reactContext);
+                    }
+                })
                 .setUseDeveloperSupport(BuildConfig.DEBUG)
                 .setInitialLifecycleState(LifecycleState.RESUMED)
                 .build();
+    }
+
+    /**
+     * Loads a specific URL {@code String} in all existing
+     * {@code JitsiMeetView}s.
+     *
+     * @param urlString - The URL {@code String} to load in all existing
+     * {@code JitsiMeetView}s.
+     * @return If the specified {@code urlString} was submitted for loading in
+     * at least one {@code JitsiMeetView}, then {@code true}; otherwise,
+     * {@code false}.
+     */
+    private static boolean loadURLStringInViews(String urlString) {
+        synchronized (views) {
+            if (!views.isEmpty()) {
+                for (JitsiMeetView view : views) {
+                    view.loadURLString(urlString);
+                }
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -156,6 +201,19 @@ public class JitsiMeetView extends FrameLayout {
      * @param intent - <tt>Intent</tt> instance which was received.
      */
     public static void onNewIntent(Intent intent) {
+        // XXX At least twice we received bug reports about malfunctioning
+        // loadURL in the Jitsi Meet SDK while the Jitsi Meet app seemed to
+        // functioning as expected in our testing. But that was to be expected
+        // because the app does not exercise loadURL. In order to increase the
+        // test coverage of loadURL, channel deep linking through loadURL.
+        Uri uri;
+
+        if (Intent.ACTION_VIEW.equals(intent.getAction())
+                && (uri = intent.getData()) != null
+                && loadURLStringInViews(uri.toString())) {
+            return;
+        }
+
         if (reactInstanceManager != null) {
             reactInstanceManager.onNewIntent(intent);
         }
@@ -196,7 +254,24 @@ public class JitsiMeetView extends FrameLayout {
 
         // Hook this JitsiMeetView into ExternalAPI.
         externalAPIScope = UUID.randomUUID().toString();
-        views.add(this);
+        synchronized (views) {
+            views.add(this);
+        }
+    }
+
+    /**
+     * Releases the React resources (specifically the {@link ReactRootView})
+     * associated with this view.
+     *
+     * This method MUST be called when the Activity holding this view is
+     * destroyed, typically in the {@code onDestroy} method.
+     */
+    public void dispose() {
+        if (reactRootView != null) {
+            removeView(reactRootView);
+            reactRootView.unmountReactApplication();
+            reactRootView = null;
+        }
     }
 
     /**
@@ -221,35 +296,68 @@ public class JitsiMeetView extends FrameLayout {
     }
 
     /**
-     * Loads the given URL and displays the conference. If the specified URL is
-     * null, the welcome page is displayed instead.
+     * Loads a specific {@link URL} which may identify a conference to join. If
+     * the specified {@code URL} is {@code null} and the Welcome page is
+     * enabled, the Welcome page is displayed instead.
      *
-     * @param url - The conference URL.
+     * @param url - The {@code URL} to load which may identify a conference to
+     * join.
      */
     public void loadURL(@Nullable URL url) {
+        loadURLString(url == null ? null : url.toString());
+    }
+
+    /**
+     * Loads a specific URL which may identify a conference to join. The URL is
+     * specified in the form of a {@link Bundle} of properties which (1)
+     * internally are sufficient to construct a URL {@code String} while (2)
+     * abstracting the specifics of constructing the URL away from API
+     * clients/consumers. If the specified URL is {@code null} and the Welcome
+     * page is enabled, the Welcome page is displayed instead.
+     *
+     * @param urlObject - The URL to load which may identify a conference to
+     * join.
+     */
+    public void loadURLObject(@Nullable Bundle urlObject) {
         Bundle props = new Bundle();
 
         // externalAPIScope
         props.putString("externalAPIScope", externalAPIScope);
         // url
-        if (url != null) {
-            props.putString("url", url.toString());
+        if (urlObject != null) {
+            props.putBundle("url", urlObject);
         }
         // welcomePageEnabled
         props.putBoolean("welcomePageEnabled", welcomePageEnabled);
 
         // TODO: ReactRootView#setAppProperties is only available on React
         // Native 0.45, so destroy the current root view and create a new one.
-        if (reactRootView != null) {
-            removeView(reactRootView);
-            reactRootView = null;
-        }
+        dispose();
 
         reactRootView = new ReactRootView(getContext());
-        reactRootView
-            .startReactApplication(reactInstanceManager, "App", props);
+        reactRootView.startReactApplication(reactInstanceManager, "App", props);
         reactRootView.setBackgroundColor(BACKGROUND_COLOR);
         addView(reactRootView);
+    }
+
+    /**
+     * Loads a specific URL {@link String} which may identify a conference to
+     * join. If the specified URL {@code String} is {@code null} and the Welcome
+     * page is enabled, the Welcome page is displayed instead.
+     *
+     * @param urlString - The URL {@code String} to load which may identify a
+     * conference to join.
+     */
+    public void loadURLString(@Nullable String urlString) {
+        Bundle urlObject;
+
+        if (urlString == null) {
+            urlObject = null;
+        } else {
+            urlObject = new Bundle();
+            urlObject.putString("url", urlString);
+        }
+        loadURLObject(urlObject);
     }
 
     /**

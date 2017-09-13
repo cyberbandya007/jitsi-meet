@@ -138,6 +138,7 @@
         left: 50%;
         top: 30px;
         display: inline-block;
+        text-align: center;
         width: auto;
         height: $defaultToolbarSize;
         border-radius: 3px;
@@ -149,6 +150,11 @@
         }
 
         @include transform(translateX(-50%));
+
+        > * {
+            display: inline-block;
+            text-align: center;
+        }
 
         > div:first-child .button {
             border-bottom-left-radius: 3px;
@@ -364,7 +370,7 @@ a.button>#avatar {
  */
 @include keyframes(slideInExt) {
     from { width: 0px; }
-    to   { width: $sidebarWidth; } // TO FIX: Make this value a percentage.
+    to   { width: $sidebarMaxWidth; } // TO FIX: Make this value a percentage.
 }
 
 .slideInExt {
@@ -372,7 +378,7 @@ a.button>#avatar {
 }
 
 @include keyframes(slideOutExt) {
-  from { width: $sidebarWidth; } // TO FIX: Make this value a percentage.
+  from { width: $sidebarMaxWidth; } // TO FIX: Make this value a percentage.
   to   { width: 0px; }
 }
 

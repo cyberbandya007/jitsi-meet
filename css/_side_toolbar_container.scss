@@ -5,7 +5,7 @@
     background-color: $sideToolbarContainerBg;
     height: 100%;
     left: $defaultToolbarSize;
-    max-width: $sidebarWidth;
+    max-width: $sidebarMaxWidth;
     overflow: hidden;
     position: absolute;
     top: 0;
@@ -55,7 +55,65 @@
     .sideToolbarContainer__inner {
         display: none;
         height: 100%;
-        width: $sidebarWidth;
+        width: $sidebarDefaultWidth;
+        position: absolute;
+        box-sizing: border-box;
+        color: #FFF;
+
+        .input-control {
+            border: 0;
+        }
+
+        /**
+         * Titles and subtitles of inner containers.
+         */
+        div.title, div.subTitle {
+            margin: 24px 0 11px;
+        }
+
+        /**
+         * Main title size.
+         */
+        div.title {
+            color: $toolbarTitleColor;
+            text-align: center;
+            font-size: $toolbarTitleFontSize;
+        }
+
+        /**
+         * Subtitle specific properties.
+         */
+        div.subTitle {
+            color: $defaultSideBarFontColor !important;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 10%;
+            text-align: left;
+        }
+
+        /**
+         * First element after a title.
+         */
+        .first {
+            margin-top: 0 !important;
+        }
+
+        /**
+         * Buttons in the side toolbar container.
+         */
+        .button-control {
+            margin: 9px 0;
+            width: 100%;
+        }
+    }
+
+    /**
+     * Inner container, for example contact list, settings or profile.
+     */
+    .sideToolbarContainer__inner__whiteboard {
+        display: none;
+        height: 100%;
+        width: $sidebarMaxWidth;
         position: absolute;
         box-sizing: border-box;
         color: #FFF;

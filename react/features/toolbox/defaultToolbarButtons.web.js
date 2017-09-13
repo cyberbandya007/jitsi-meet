@@ -100,6 +100,31 @@ const buttons: Object = {
     },
 
     /**
+     * The descriptor of the whiteboard toolbar button.
+     */
+    whiteboard: {
+        classNames: [ 'button', 'icon-whiteboard' ],
+        enabled: true,
+        html: <span className = 'badge-round'>
+            <span id = 'unreadMessages' />
+        </span>,
+        id: 'toolbar_button_whiteboard',
+        onClick() {
+            JitsiMeetJS.analytics.sendEvent('toolbar.whiteboard.toggled');
+            APP.UI.emitEvent(UIEvents.TOGGLE_WHITEBOARD);
+        },
+        shortcut: 'W',
+        shortcutAttr: 'toggleWhiteboardPopover',
+        shortcutFunc() {
+            JitsiMeetJS.analytics.sendEvent('shortcut.whiteboard.toggled');
+            APP.UI.toggleWhiteboard();
+        },
+        shortcutDescription: 'keyboardShortcuts.toggleWhiteboard',
+        sideContainerId: 'whiteboard_container',
+        tooltipKey: 'toolbar.whiteboard'
+    },
+
+    /**
      * The descriptor of the contact list toolbar button.
      */
     contacts: {

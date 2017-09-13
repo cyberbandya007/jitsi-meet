@@ -45,13 +45,13 @@
 // FIX: Can't use percentage because of breaking animation when width is changed
 // (100% of 0 is also zero) Extracted this to config variable.
 @include keyframes(slideInExt) {
-    from { left: -$sidebarWidth; }
+    from { left: -$sidebarDefaultWidth; }
     to   { left: 0; }
 }
 
 @include keyframes(slideOutExt) {
     from { left: 0; }
-    to   { left: -$sidebarWidth; }
+    to   { left: -$sidebarDefaultWidth; }
 }
 
 /**
@@ -59,11 +59,11 @@
 **/
 
 @include keyframes(slideOutExtContainer) {
-    from { width: $sidebarWidth; }
+    from { width: $sidebarDefaultWidth; }
     to { width: 0; }
 }
 
 @include keyframes(slideInExtContainer) {
     from { width: 0; }
-    to { width: $sidebarWidth; }
+    to { width: $sidebarDefaultWidth; }
 }

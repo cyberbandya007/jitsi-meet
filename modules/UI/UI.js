@@ -559,9 +559,14 @@ UI.toggleFilmstrip = function () {
 UI.isFilmstripVisible = () => Filmstrip.isFilmstripVisible();
 
 /**
- * Toggles chat panel.
+ * Toggles whiteboard panel.
  */
 UI.toggleChat = () => UI.toggleSidePanel("chat_container");
+
+/**
+ * Toggles chat panel.
+ */
+UI.toggleWhiteboard = () => UI.toggleSidePanel("whiteboard_container");
 
 /**
  * Toggles contact list panel.
@@ -1228,6 +1233,9 @@ const UIListeners = new Map([
     ], [
         UIEvents.TOGGLE_CHAT,
         UI.toggleChat
+    ], [
+        UIEvents.TOGGLE_WHITEBOARD,
+        UI.toggleWhiteboard
     ], [
         UIEvents.TOGGLE_SETTINGS,
         () => {

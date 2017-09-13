@@ -1,4 +1,5 @@
 import Chat from './chat/Chat';
+import Whiteboard from './whiteboard/Whiteboard';
 import SettingsMenu from './settings/SettingsMenu';
 import Profile from './profile/Profile';
 import ContactListView from './contactlist/ContactListView';
@@ -24,6 +25,11 @@ const SidePanels = {
         // Initialize contact list view
         if (isButtonEnabled('contacts')) {
             ContactListView.init();
+        }
+
+        // Initialize whiteboard
+        if (isButtonEnabled('whiteboard')) {
+            Whiteboard.init(eventEmitter);
         }
     }
 };

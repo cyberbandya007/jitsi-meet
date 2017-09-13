@@ -39,6 +39,7 @@ export default {
      */
     TOGGLE_AUDIO_ONLY: "UI.toggle_audioonly",
     TOGGLE_CHAT: "UI.toggle_chat",
+    TOGGLE_WHITEBOARD: "UI.toggle_whiteboard",
     TOGGLE_SETTINGS: "UI.toggle_settings",
     TOGGLE_CONTACT_LIST: "UI.toggle_contact_list",
     /**

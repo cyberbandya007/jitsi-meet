@@ -10,13 +10,13 @@ STYLES_DESTINATION = css/all.css
 STYLES_MAIN = css/main.scss
 WEBPACK = ./node_modules/.bin/webpack
 
-all: compile deploy clean
+all: clean compile deploy
 
 compile:
 	$(WEBPACK) -p
 
 clean:
-	rm -fr $(BUILD_DIR)
+	rm -fr $(BUILD_DIR) $(DEPLOY_DIR) $(STYLES_DESTINATION) $(STYLES_BUNDLE)
 
 deploy: deploy-init deploy-appbundle deploy-lib-jitsi-meet deploy-css deploy-local
 

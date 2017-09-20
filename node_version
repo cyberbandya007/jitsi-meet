@@ -1,0 +1,4 @@
+sandeep@convene:~/src/jitsi-meet$ node -v
+v8.0.0
+sandeep@convene:~/src/jitsi-meet$ npm -v
+5.4.1

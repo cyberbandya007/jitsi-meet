@@ -1,0 +1,56 @@
+diff --git a/modules/UI/UI.js b/modules/UI/UI.js
+index 81d15f0..55d6ee5 100644
+--- a/modules/UI/UI.js
++++ b/modules/UI/UI.js
+@@ -566,7 +566,8 @@ UI.toggleChat = () => UI.toggleSidePanel("chat_container");
+ /**
+  * Toggles chat panel.
+  */
+-UI.toggleWhiteboard = () => UI.toggleSidePanel("whiteboard_container");
++//UI.toggleWhiteboard = () => UI.toggleSidePanel("whiteboard_container");
++UI.toggleWhiteboard = () => UI.showWhiteboardInNewWindow();
+ 
+ /**
+  * Toggles contact list panel.
+@@ -580,6 +581,14 @@ UI.toggleContactList = () => UI.toggleSidePanel("contacts_container");
+  */
+ UI.toggleSidePanel = sidePanelId => SideContainerToggler.toggle(sidePanelId);
+ 
++UI.showWhiteboardInNewWindow = function () {
++    var hname = window.location.hostname;
++    var port = 9001;
++    var path = window.location.pathname
++    var newwindow=window.open('http://'+hname+':'+port+'/#'+path,'_blank','height=600,width=600');
++    if (window.focus) {newwindow.focus()}
++}
++
+ 
+ /**
+  * Handle new user display name.
+diff --git a/react/features/toolbox/defaultToolbarButtons.web.js b/react/features/toolbox/defaultToolbarButtons.web.js
+index b509011..06fe016 100644
+--- a/react/features/toolbox/defaultToolbarButtons.web.js
++++ b/react/features/toolbox/defaultToolbarButtons.web.js
+@@ -80,22 +80,11 @@ const buttons: Object = {
+     chat: {
+         classNames: [ 'button', 'icon-chat' ],
+         enabled: true,
+-        html: <span className = 'badge-round'>
+-            <span id = 'unreadMessages' />
+-        </span>,
+         id: 'toolbar_button_chat',
+         onClick() {
+             JitsiMeetJS.analytics.sendEvent('toolbar.chat.toggled');
+             APP.UI.emitEvent(UIEvents.TOGGLE_CHAT);
+         },
+-        shortcut: 'C',
+-        shortcutAttr: 'toggleChatPopover',
+-        shortcutFunc() {
+-            JitsiMeetJS.analytics.sendEvent('shortcut.chat.toggled');
+-            APP.UI.toggleChat();
+-        },
+-        shortcutDescription: 'keyboardShortcuts.toggleChat',
+-        sideContainerId: 'chat_container',
+         tooltipKey: 'toolbar.chat'
+     },
+ 

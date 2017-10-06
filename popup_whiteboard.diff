@@ -1,5 +1,5 @@
 diff --git a/modules/UI/UI.js b/modules/UI/UI.js
-index 81d15f0..55d6ee5 100644
+index 81d15f0..a05aeaa 100644
 --- a/modules/UI/UI.js
 +++ b/modules/UI/UI.js
 @@ -566,7 +566,8 @@ UI.toggleChat = () => UI.toggleSidePanel("chat_container");
@@ -20,7 +20,7 @@ index 81d15f0..55d6ee5 100644
 +    var hname = window.location.hostname;
 +    var port = 9001;
 +    var path = window.location.pathname
-+    var newwindow=window.open('http://'+hname+':'+port+'/#'+path,'_blank','height=600,width=600');
++    var newwindow=window.open('http://'+hname+':'+port+'/#'+path,'_blank','max-height=100%,max-width=100%,height='+window.screen.height+",width="+window.screen.width);
 +    if (window.focus) {newwindow.focus()}
 +}
 +
